@@ -1,0 +1,303 @@
+<!-- Styles -->
+<style>
+    #chartdiv {
+        width: 100%;
+        height: 600px;
+    }
+
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    .info-table th,
+    .info-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .info-table th {
+        background-color: #f2f2f2;
+    }
+
+    select {
+        width: 15%;
+        padding: 10px;
+        margin-top: 5px;
+        border: 2px solid #007BFF;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+        font-size: 16px;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    select:hover {
+        border-color: #0056b3;
+    }
+
+    select:focus {
+        border-color: #0056b3;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    div #optionId {
+        max-width: 300px;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    label {
+        font-weight: bold;
+    }
+</style>
+
+<!-- Resources -->
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+    integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+<!-- Chart code -->
+<script>
+    am5.ready(function () {
+        var root = am5.Root.new("chartdiv");
+        root.setThemes([am5themes_Animated.new(root)]);
+
+        var chart = root.container.children.push(am5map.MapChart.new(root, {
+            panX: "rotateX",
+            panY: "translateY",
+            projection: am5map.geoMercator(),
+            homeGeoPoint: { latitude: 2, longitude: 2 }
+        }));
+
+        var cont = chart.children.push(am5.Container.new(root, {
+            layout: root.horizontalLayout,
+            x: 20,
+            y: 40
+        }));
+
+        // Add labels and controls
+        cont.children.push(am5.Label.new(root, {
+            centerY: am5.p50,
+            text: "Map"
+        }));
+
+        var switchButton = cont.children.push(am5.Button.new(root, {
+            themeTags: ["switch"],
+            centerY: am5.p50,
+            icon: am5.Circle.new(root, {
+                themeTags: ["icon"]
+            })
+        }));
+
+        switchButton.on("active", function () {
+            if (!switchButton.get("active")) {
+                chart.set("projection", am5map.geoMercator());
+                chart.set("panY", "translateY");
+                chart.set("rotationY", 0);
+                backgroundSeries.mapPolygons.template.set("fillOpacity", 0);
+            } else {
+                chart.set("projection", am5map.geoOrthographic());
+                chart.set("panY", "rotateY")
+
+                backgroundSeries.mapPolygons.template.set("fillOpacity", 0.1);
+            }
+        });
+
+        cont.children.push(
+            am5.Label.new(root, {
+                centerY: am5.p50,
+                text: "Globe"
+            })
+        );
+
+        // Create series for background fill
+        // https://www.amcharts.com/docs/v5/charts/map-chart/map-polygon-series/#Background_polygon
+        var backgroundSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {}));
+        backgroundSeries.mapPolygons.template.setAll({
+            fill: root.interfaceColors.get("alternativeBackground"),
+            fillOpacity: 0,
+            strokeOpacity: 0
+        });
+
+        // Add background polygon
+        // https://www.amcharts.com/docs/v5/charts/map-chart/map-polygon-series/#Background_polygon
+        backgroundSeries.data.push({
+            geometry: am5map.getGeoRectangle(90, 180, -90, -180)
+        });
+
+        // Add projection buttons
+        var buttons = chart.children.push(am5.Container.new(root, {
+            x: am5.p50,
+            centerX: am5.p50,
+            y: am5.p100,
+            dy: -10,
+            centerY: am5.p100,
+            layout: root.horizontalLayout,
+            paddingTop: 5,
+            paddingRight: 8,
+            paddingBottom: 5,
+            paddingLeft: 8,
+            background: am5.RoundedRectangle.new(root, {
+                fill: am5.color(0xffffff),
+                fillOpacity: 0.3
+            })
+        }));
+
+        function createButton(text, projection) {
+            var button = buttons.children.push(am5.Button.new(root, {
+                paddingTop: 0,
+                paddingRight: 0,
+                paddingBottom: 0,
+                paddingLeft: 0,
+                marginLeft: 5,
+                marginRight: 5,
+                label: am5.Label.new(root, {
+                    text: text,
+                })
+            }));
+
+            button.events.on("click", function () {
+                chart.set("projection", projection);
+            });
+        }
+
+        createButton("geoEqualEarth", am5map.geoEqualEarth());
+        createButton("geoEquirectangular", am5map.geoEquirectangular());
+        createButton("geoMercator", am5map.geoMercator());
+        createButton("geoNaturalEarth1", am5map.geoNaturalEarth1());
+        createButton("geoOrthographic", am5map.geoOrthographic());
+
+        var polygonSeries = chart.series.push(
+            am5map.MapPolygonSeries.new(root, {
+                geoJSON: am5geodata_worldLow,
+                exclude: ["AQ"]
+            })
+        );
+        polygonSeries.mapPolygons.template.setAll({
+            tooltipText: "{name}",
+            fillOpacity: 0.8
+        });
+        var colorSet = am5.ColorSet.new(root, {});
+
+        var i = 0;
+        polygonSeries.mapPolygons.template.adapters.add("fill", function (fill, target) {
+            if (i < 10) {
+                i++;
+            }
+            else {
+                i = 0;
+            }
+            var dataContext = target.dataItem.dataContext;
+            if (!dataContext.colorWasSet) {
+                dataContext.colorWasSet = true;
+                var color = am5.Color.saturate(colorSet.getIndex(i), 0.3);
+                target.setRaw("fill", color);
+                return color;
+            }
+            else {
+                return fill;
+            }
+        })
+
+        polygonSeries.mapPolygons.template.states.create("hover", { fillOpacity: 1 });
+
+        var explosionSeries = chart.series.push(
+            am5map.MapPointSeries.new(root, {
+                valueField: "radius",
+                polygonIdField: "id"
+            })
+        );
+
+        var circleTemplate = am5.Template.new({});
+
+        function calculateBlastRadius(yieldKt) {
+            return {
+                fireball: (0.62 * Math.pow(yieldKt, 0.4)).toFixed(2),
+                shockwave: (1.8 * Math.pow(yieldKt, 0.33)).toFixed(2),
+                thermal: (3.2 * Math.pow(yieldKt, 0.4)).toFixed(2)
+            };
+        }
+
+        explosionSeries.bullets.push(function (root, series, dataItem) {
+            var circle = am5.Circle.new(root, {
+                radius: dataItem.dataContext.radius,
+                fillOpacity: 0.4,
+                fill: am5.color(0xff0000),
+                cursorOverStyle: "pointer",
+                tooltipText: "{name}: {radius} km radius"
+            }, circleTemplate);
+
+            circle.animate({
+                key: "radius",
+                from: 0,
+                to: dataItem.dataContext.radius,
+                duration: 1000,
+                easing: am5.ease.out(am5.ease.cubic)
+            });
+
+            return am5.Bullet.new(root, { sprite: circle });
+        });
+
+        polygonSeries.mapPolygons.template.events.on("click", function (ev) {
+            var dataItem = ev.target.dataItem;
+            var centroid = dataItem.geometry;
+            console.log(dataItem.dataContext);
+
+            var countryName = dataItem.dataContext.name || "Tidak diketahui";
+
+            var yieldKt = parseInt(document.getElementById("bombType").value);
+            var blastRadius = calculateBlastRadius(yieldKt);
+
+            explosionSeries.data.push({
+                id: dataItem.get("id"),
+                name: countryName,
+                radius: parseFloat(blastRadius.thermal),
+                geometry: { type: "Point", coordinates: centroid }
+            });
+
+            document.getElementById("info").innerHTML = `
+            <table class="info-table">
+                <tr><th>Wilayah</th><td>${countryName}</td></tr>
+                <tr><th>Dampak Fireball</th><td>${blastRadius.fireball} km</td></tr>
+                <tr><th>Dampak Shockwave</th><td>${blastRadius.shockwave} km</td></tr>
+                <tr><th>Dampak Thermal</th><td>${blastRadius.thermal} km</td></tr>
+                <tr><th>Populasi Terdampak</th><td>${Math.round(Math.random() * 1000000)}</td></tr>
+                <tr><th>Kerusakan Infrastruktur</th><td>${Math.round(Math.random() * 100)}%</td></tr>
+            </table>`;
+        });
+
+        // Add zoom control
+        // https://www.amcharts.com/docs/v5/charts/map-chart/map-pan-zoom/#Zoom_control
+        var zoomControl = chart.set("zoomControl", am5map.ZoomControl.new(root, {}));
+        zoomControl.homeButton.set("visible", true);
+    });
+    // In your Javascript (external .js resource or <script> tag)
+    $(document).ready(function () {
+        $('.js-example-basic-single').select2();
+    });
+</script>
+
+<!-- HTML -->
+<div id="optionId">
+    <label for="bombType"></label>
+    <select class="js-example-basic-single" id="bombType">
+        <option value="15">Little Boy (15 kt)</option>
+        <option value="21">Fat Man (21 kt)</option>
+        <option value="1000">Tsar Bomba (1000 kt)</option>
+    </select>
+</div>
+<div id="chartdiv"></div>
+<div id="info"></div>
